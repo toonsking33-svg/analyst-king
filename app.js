@@ -213,40 +213,21 @@ class AnalystKingApp {
 
     loadFallbackMatches() {
         const container = document.getElementById('upcomingMatches');
-        container.innerHTML = SAMPLE_MATCHES.slice(0, 6).map(match => {
-            const league = getLeagueById(match.league);
-            return `
-                <div class="match-item">
-                    <div class="match-teams">
-                        <div class="match-team">
-                            <span class="team-logo">${match.home.substring(0, 2).toUpperCase()}</span>
-                            <span>${match.home}</span>
-                        </div>
-                        <div class="match-team">
-                            <span class="team-logo">${match.away.substring(0, 2).toUpperCase()}</span>
-                            <span>${match.away}</span>
-                        </div>
-                    </div>
-                    <div class="match-info">
-                        <div class="match-time">${match.time}</div>
-                        <div class="match-league">${league ? league.flag : ''} ${match.date}</div>
-                        <span class="match-status upcoming">${match.time}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        this.updateMatchCount(SAMPLE_MATCHES.length);
+        if (this.apiAvailable) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-sync-alt"></i><p>Cargando partidos reales de API-Football...</p><p style="font-size:12px;color:var(--text-muted)">Si no aparecen, verifica tu conexión o la API key</p></div>';
+        } else {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>API-Football no conectada</p><p style="font-size:12px;color:var(--text-muted)">Verifica tu conexión a internet</p></div>';
+        }
+        this.updateMatchCount(0);
     }
 
     loadInsights() {
         const container = document.getElementById('aiInsights');
-        container.innerHTML = SAMPLE_INSIGHTS.map(insight => `
-            <div class="insight-item">
-                <div class="insight-title">${insight.title}</div>
-                <div class="insight-text">${insight.text}</div>
-                <span class="insight-tag ${insight.priority}">${insight.priority === 'high' ? 'Alta Prioridad' : insight.priority === 'medium' ? 'Media' : 'Informativo'}</span>
-            </div>
-        `).join('');
+        if (this.apiAvailable) {
+            container.innerHTML = '<div class="empty-state"><p>Los insights se cargan cuando seleccionas una liga</p></div>';
+        } else {
+            container.innerHTML = '<div class="empty-state"><p>Conecta API-Football para ver insights</p></div>';
+        }
     }
 
     navigateToSection(section) {
@@ -379,13 +360,9 @@ class AnalystKingApp {
     }
 
     loadFallbackStandings(leagueId) {
-        let standings = getStandings(leagueId);
-        if (standings.length === 0) {
-            standings = generateStandings(leagueId);
-            STANDINGS_DATA[leagueId] = standings;
-        }
-        this.renderStandings(standings);
-        this.loadFallbackFixtures(leagueId);
+        const tbody = document.getElementById('standingsBody');
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center" style="padding:40px"><i class="fas fa-exclamation-triangle" style="font-size:24px;color:var(--accent-warning);display:block;margin-bottom:10px"></i>No se pudieron cargar los datos de clasificación<br><small style="color:var(--text-muted)">Verifica tu conexión o intenta más tarde</small></td></tr>';
+        document.getElementById('fixturesList').innerHTML = '<div class="empty-state"><p>No hay datos de fixtures disponibles</p></div>';
         this.loadFallbackStats();
     }
 

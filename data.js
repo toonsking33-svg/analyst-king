@@ -343,51 +343,9 @@ const STANDINGS_DATA = {
     ]
 };
 
-// Sample matches data
-const SAMPLE_MATCHES = [
-    { home: 'Manchester City', away: 'Arsenal', league: 'premier-league', time: '15:00', date: 'Hoy', status: 'upcoming' },
-    { home: 'Real Madrid', away: 'FC Barcelona', league: 'laliga', time: '21:00', date: 'Hoy', status: 'upcoming' },
-    { home: 'Bayern Munich', away: 'Borussia Dortmund', league: 'bundesliga', time: '18:30', date: 'Mañana', status: 'upcoming' },
-    { home: 'PSG', away: 'Olympique Marsella', league: 'ligue1', time: '20:45', date: 'Mañana', status: 'upcoming' },
-    { home: 'Inter Miami', away: 'LAFC', league: 'mls', time: '20:00', date: 'Hoy', status: 'upcoming' },
-    { home: 'Botafogo', away: 'Flamengo', league: 'brasileirao', time: '21:30', date: 'Hoy', status: 'upcoming' },
-    { home: 'Club América', away: 'Cruz Azul', league: 'liga-mx', time: '19:00', date: 'Hoy', status: 'upcoming' },
-    { home: 'Inter Milan', away: 'AC Milan', league: 'serie-a', time: '20:45', date: 'Mañana', status: 'upcoming' },
-];
-
-// Sample AI insights
-const SAMPLE_INSIGHTS = [
-    {
-        title: 'Manchester City vs Arsenal - Clásico de la Premier',
-        text: 'El Manchester City tiene un 62% de victorias en los últimos 10 enfrentamientos directos. Haaland promedia 1.2 goles por partido en casa. Arsenal ha concedido solo 28 goles esta temporada.',
-        priority: 'high',
-        league: 'premier-league'
-    },
-    {
-        title: 'Real Madrid favorito en el Clásico',
-        text: 'Con Vinícius Jr. en racha de 5 partidos consecutivos anotando, el Real Madrid llega como favorito. El Barcelona ha perdido 3 de sus últimos 5 visitas al Bernabéu.',
-        priority: 'high',
-        league: 'laliga'
-    },
-    {
-        title: 'Botafogo lidera el Brasileirão',
-        text: 'El Botafogo mantiene una racha de 7 victorias consecutivas. Luiz Henrique es el goleador líder con 12 goles en 15 partidos.',
-        priority: 'medium',
-        league: 'brasileirao'
-    },
-    {
-        title: 'PSG dominador en Ligue 1',
-        text: 'Paris Saint-Germain ha ganado los últimos 8 enfrentamientos contra el Marsella. Bradley Barcola ha anotado en los últimos 4 partidos.',
-        priority: 'medium',
-        league: 'ligue1'
-    },
-    {
-        title: 'Inter Miami en racha ascendente',
-        text: 'Con Messi en el equipo, Inter Miami ha ganado 8 de sus últimos 10 partidos. Luis Suárez ha aportado 6 asistencias en el último mes.',
-        priority: 'low',
-        league: 'mls'
-    }
-];
+// No fake data - all data comes from API-Football
+const SAMPLE_MATCHES = [];
+const SAMPLE_INSIGHTS = [];
 
 // Helper function to get league by ID
 function getLeagueById(id) {
@@ -405,31 +363,7 @@ function generateRandomForm() {
     return Array.from({ length: 5 }, () => results[Math.floor(Math.random() * 3)]);
 }
 
-// Helper function to generate random standings
+// No fake standings - only used as absolute fallback
 function generateStandings(leagueId) {
-    const league = getLeagueById(leagueId);
-    if (!league) return [];
-    
-    return league.teams.slice(0, 20).map((team, index) => {
-        const pj = Math.floor(Math.random() * 10) + 28;
-        const g = Math.floor(Math.random() * 15) + 10;
-        const p = Math.floor(Math.random() * 10) + 2;
-        const e = pj - g - p;
-        const gf = Math.floor(Math.random() * 40) + 40;
-        const gc = Math.floor(Math.random() * 30) + 20;
-        const pts = g * 3 + e;
-        
-        return {
-            pos: index + 1,
-            team: team,
-            pj: pj,
-            g: g,
-            e: e,
-            p: p,
-            gf: gf,
-            gc: gc,
-            pts: pts,
-            form: generateRandomForm()
-        };
-    }).sort((a, b) => b.pts - a.pts).map((item, index) => ({ ...item, pos: index + 1 }));
+    return [];
 }
