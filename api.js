@@ -1,78 +1,38 @@
-// API-Football Integration - Fixed for Free Plan
-// Free plan: seasons 2022-2024 only for standings
-// Fixtures/today work fine with current date
+// API-Football Integration - Calls our backend proxy
+// Backend handles caching and rate limiting
 const API_FOOTBALL = {
-    baseURL: 'https://v3.football.api-sports.io',
-    apiKey: '6c33cc89febaeebd137f00b8ecde62a2',
-    
-    // Free plan only allows seasons 2022-2024 for standings
-    // But fixtures by date work without season restriction
+    // Backend proxy URL (same origin in production)
+    baseURL: window.location.origin + '/api/football',
+
+    // 10 major leagues only (reduced from 22 to save API quota)
     leagues: {
         'premier-league': { id: 39, name: 'Premier League' },
-        'championship': { id: 40, name: 'Championship' },
         'laliga': { id: 140, name: 'LaLiga' },
         'bundesliga': { id: 78, name: 'Bundesliga' },
         'serie-a': { id: 135, name: 'Serie A' },
         'ligue1': { id: 61, name: 'Ligue 1' },
-        'eredivisie': { id: 88, name: 'Eredivisie' },
-        'liga-portugal': { id: 94, name: 'Liga Portugal' },
-        'brasileirao': { id: 71, name: 'Brasileirão' },
-        'liga-mx': { id: 262, name: 'Liga MX' },
-        'mls': { id: 253, name: 'MLS' },
         'champions-league': { id: 2, name: 'Champions League' },
-        'europa-league': { id: 3, name: 'Europa League' },
-        'libertadores': { id: 13, name: 'Libertadores' },
-        'sudamericana': { id: 14, name: 'Sudamericana' },
+        'brasileirao': { id: 71, name: 'Brasileirao' },
         'liga-argentina': { id: 128, name: 'Liga Argentina' },
-        'copa-argentina': { id: 129, name: 'Copa Argentina' },
-        'fa-cup': { id: 45, name: 'FA Cup' },
-        'brasileirao-b': { id: 72, name: 'Brasileirão B' },
-        'veikkausliiga': { id: 244, name: 'Veikkausliiga' },
-        'eliteserien': { id: 103, name: 'Eliteserien' },
-        'northern-championship': { id: 104, name: 'Norwegian 1st Division' }
+        'eredivisie': { id: 88, name: 'Eredivisie' },
+        'liga-portugal': { id: 94, name: 'Liga Portugal' }
     },
 
-    headers: { 'x-apisports-key': '6c33cc89febaeebd137f00b8ecde62a2' },
-
-    // Standings season (free plan: max 2024)
-    getStandingsSeason(leagueId) {
-        // Use 2024 for all leagues (last available on free plan)
-        return 2024;
-    },
-
-    async fetchAPI(url, retries = 2) {
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            try {
-                const response = await fetch(url, { headers: this.headers, mode: 'cors' });
-                if (response.status === 429) {
-                    await new Promise(r => setTimeout(r, (attempt + 1) * 5000));
-                    continue;
-                }
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                if (data.errors && Object.keys(data.errors).length > 0) {
-                    const errMsg = Object.values(data.errors).join(', ');
-                    if (errMsg.includes('Free plans do not have access')) {
-                        throw new Error('FREE_PLAN_LIMIT');
-                    }
-                    throw new Error(errMsg);
-                }
-                return data;
-            } catch (error) {
-                if (attempt === retries) throw error;
-                await new Promise(r => setTimeout(r, 1500));
-            }
-        }
+    async fetchAPI(endpoint, params = {}) {
+        const qs = new URLSearchParams(params).toString();
+        const url = `${this.baseURL}/${endpoint}?${qs}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        return data;
     },
 
     // ========== STANDINGS (season 2024 for free plan) ==========
     async getStandings(leagueId) {
         const league = this.leagues[leagueId];
         if (!league) throw new Error('Liga no encontrada');
-        const season = this.getStandingsSeason(leagueId);
-        const data = await this.fetchAPI(
-            `${this.baseURL}/standings?league=${league.id}&season=${season}`
-        );
+        const data = await this.fetchAPI('standings', { league: league.id, season: 2024 });
         return this.formatStandings(data.response || []);
     },
 
@@ -100,45 +60,30 @@ const API_FOOTBALL = {
         return formString.split('').slice(-5);
     },
 
-    // ========== FIXTURES (by date - works without season) ==========
+    // ========== FIXTURES ==========
     async getFixtures(leagueId, date = null) {
         const league = this.leagues[leagueId];
         if (!league) throw new Error('Liga no encontrada');
         const d = date || new Date().toISOString().split('T')[0];
-        const data = await this.fetchAPI(
-            `${this.baseURL}/fixtures?league=${league.id}&date=${d}`
-        );
+        const data = await this.fetchAPI('fixtures', { league: league.id, date: d });
         return this.formatFixtures(data.response || []);
     },
 
     async getTodayMatches() {
         const today = new Date().toISOString().split('T')[0];
-        const data = await this.fetchAPI(`${this.baseURL}/fixtures?date=${today}`);
+        const data = await this.fetchAPI('fixtures', { date: today });
         return this.formatFixtures(data.response || []);
     },
 
     async getLiveMatches() {
-        const data = await this.fetchAPI(`${this.baseURL}/fixtures?live=all`);
+        const data = await this.fetchAPI('fixtures', { live: 'all' });
         return this.formatFixtures(data.response || []);
     },
 
-    // Get fixtures for specific league from today's matches
     getFixturesForLeague(matches, leagueId) {
         const league = this.leagues[leagueId];
         if (!league) return [];
         return matches.filter(m => m.league.id === league.id);
-    },
-
-    // Get all matches grouped by league for today
-    async getTodayMatchesByLeague() {
-        const matches = await this.getTodayMatches();
-        const grouped = {};
-        for (const match of matches) {
-            const leagueName = match.league.name;
-            if (!grouped[leagueName]) grouped[leagueName] = [];
-            grouped[leagueName].push(match);
-        }
-        return grouped;
     },
 
     formatFixtures(response) {
@@ -176,22 +121,11 @@ const API_FOOTBALL = {
         }));
     },
 
-    // ========== TOP SCORERS (2024 for free plan) ==========
+    // ========== TOP SCORERS ==========
     async getTopScorers(leagueId) {
         const league = this.leagues[leagueId];
         if (!league) throw new Error('Liga no encontrada');
-        const data = await this.fetchAPI(
-            `${this.baseURL}/players/topscorers?league=${league.id}&season=2024`
-        );
-        return this.formatPlayers(data.response || []);
-    },
-
-    async getTopAssists(leagueId) {
-        const league = this.leagues[leagueId];
-        if (!league) throw new Error('Liga no encontrada');
-        const data = await this.fetchAPI(
-            `${this.baseURL}/players/topassists?league=${league.id}&season=2024`
-        );
+        const data = await this.fetchAPI('players/topscorers', { league: league.id, season: 2024 });
         return this.formatPlayers(data.response || []);
     },
 
@@ -213,17 +147,13 @@ const API_FOOTBALL = {
 
     // ========== HEAD TO HEAD ==========
     async getHeadToHead(team1Id, team2Id) {
-        const data = await this.fetchAPI(
-            `${this.baseURL}/fixtures/headtohead?h2h=${team1Id}-${team2Id}&last=10`
-        );
+        const data = await this.fetchAPI('fixtures/headtohead', { h2h: `${team1Id}-${team2Id}`, last: 10 });
         return this.formatFixtures(data.response || []);
     },
 
     // ========== TEAM SEARCH ==========
     async searchTeams(query) {
-        const data = await this.fetchAPI(
-            `${this.baseURL}/teams?search=${encodeURIComponent(query)}`
-        );
+        const data = await this.fetchAPI('teams', { search: query });
         if (!data.response) return [];
         return data.response.map(team => ({
             id: team.team.id,
@@ -233,26 +163,14 @@ const API_FOOTBALL = {
         }));
     },
 
-    // ========== PREDICTIONS (for specific fixture) ==========
-    async getPredictions(fixtureId) {
-        try {
-            const data = await this.fetchAPI(
-                `${this.baseURL}/predictions?fixture=${fixtureId}`
-            );
-            return data.response || [];
-        } catch (e) {
-            return [];
-        }
-    },
-
     // ========== API STATUS ==========
     async checkStatus() {
         try {
-            const data = await this.fetchAPI(`${this.baseURL}/status`);
+            const data = await this.fetchAPI('status');
             return {
-                account: data.response.account,
-                requests: data.response.requests,
-                subscription: data.response.subscription
+                account: data.response?.account,
+                requests: data.response?.requests,
+                subscription: data.response?.subscription
             };
         } catch (error) {
             return null;

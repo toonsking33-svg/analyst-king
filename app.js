@@ -1,9 +1,8 @@
-// Analyst King App - Fixed Version
+// Analyst King App - Working Version
 class AnalystKingApp {
     constructor() {
         this.currentSection = 'dashboard';
         this.currentLeague = null;
-        this.currentTab = 'standings';
         this.isSidebarOpen = false;
         this.apiAvailable = false;
         this.todayMatches = [];
@@ -12,8 +11,16 @@ class AnalystKingApp {
 
     async init() {
         this.bindEvents();
+        this.populateLeagues();
+        this.populateLeagueSelects();
         await this.checkApiConnection();
-        await this.loadInitialData();
+        if (this.apiAvailable) {
+            await this.loadTodayMatches();
+        } else {
+            this.showEmpty('upcomingMatches', 'Sin conexion con API-Football');
+        }
+        document.getElementById('totalLeagues').textContent = LEAGUES.length;
+        document.getElementById('aiInsights').innerHTML = '<div class="empty-state"><p>Selecciona una liga para ver analisis</p></div>';
     }
 
     async checkApiConnection() {
@@ -21,8 +28,7 @@ class AnalystKingApp {
             const status = await API_FOOTBALL.checkStatus();
             if (status?.account) {
                 this.apiAvailable = true;
-                const r = status.requests;
-                this.updateApiStatus(true, r);
+                this.updateApiStatus(true, status.requests);
                 return;
             }
         } catch (e) { console.error('API check:', e); }
@@ -37,7 +43,7 @@ class AnalystKingApp {
             el.innerHTML = `<i class="fas fa-circle"></i><span>API OK${t}</span>`;
             el.classList.remove('disconnected');
         } else {
-            el.innerHTML = '<i class="fas fa-circle"></i><span>Sin conexión</span>';
+            el.innerHTML = '<i class="fas fa-circle"></i><span>Sin conexion</span>';
             el.classList.add('disconnected');
         }
     }
@@ -64,6 +70,8 @@ class AnalystKingApp {
             b.addEventListener('click', () => this.switchTab(b.dataset.tab));
         });
         document.getElementById('generateLeagueAnalysis').addEventListener('click', () => this.genAnalysis());
+
+        // Prediction filters
         document.querySelectorAll('.btn-filter[data-filter]').forEach(b => {
             b.addEventListener('click', () => {
                 document.querySelectorAll('.btn-filter[data-filter]').forEach(x => x.classList.remove('active'));
@@ -71,6 +79,11 @@ class AnalystKingApp {
                 this.loadPredictions(b.dataset.filter);
             });
         });
+        document.getElementById('predictionLeagueFilter').addEventListener('change', e => {
+            const activeFilter = document.querySelector('.btn-filter.active')?.dataset.filter || 'today';
+            this.loadPredictions(activeFilter);
+        });
+
         document.getElementById('searchInput').addEventListener('input', e => this.handleSearch(e.target.value));
         document.addEventListener('click', e => {
             if (this.isSidebarOpen && !e.target.closest('.sidebar') && !e.target.closest('#menuToggle')) this.toggleSidebar();
@@ -80,57 +93,25 @@ class AnalystKingApp {
         });
     }
 
-    async loadInitialData() {
-        this.populateLeagues();
-        this.populateLeagueSelects();
-        if (this.apiAvailable) {
-            await this.loadTodayMatches();
-            await this.loadLiveCount();
-        } else {
-            this.showEmpty('upcomingMatches', 'Conecta API-Football para ver partidos');
-        }
-        this.showEmpty('aiInsights', 'Selecciona una liga para ver análisis');
-    }
-
-    populateLeagues() {
-        const c = document.getElementById('leaguesList');
-        c.innerHTML = LEAGUES.map(l => `
-            <div class="league-item" data-league="${l.id}">
-                <span class="league-flag">${l.flag}</span><span>${l.name}</span>
-            </div>
-        `).join('');
-        c.querySelectorAll('.league-item').forEach(i => {
-            i.addEventListener('click', () => this.openLeague(i.dataset.league));
-        });
-    }
-
-    populateLeagueSelects() {
-        const opts = LEAGUES.map(l => `<option value="${l.id}">${l.flag} ${l.name}</option>`).join('');
-        document.getElementById('aiLeagueSelect').innerHTML = '<option value="">Seleccionar liga...</option>' + opts;
-        document.getElementById('predictionLeagueFilter').innerHTML = '<option value="all">Todas las Ligas</option>' + opts;
-    }
-
+    // ========== DASHBOARD ==========
     async loadTodayMatches() {
         this.showLoading();
         try {
             this.todayMatches = await API_FOOTBALL.getTodayMatches();
             this.hideLoading();
-            this.renderTodayMatches(this.todayMatches);
-            this.updateCount('totalMatches', this.todayMatches.length);
+
+            // Filter to only our 10 tracked leagues
+            const trackedIds = new Set(Object.values(API_FOOTBALL.leagues).map(l => l.id));
+            const filtered = this.todayMatches.filter(m => trackedIds.has(m.league.id));
+
+            this.renderTodayMatches(filtered);
+            this.updateCount('totalMatches', filtered.length);
+            document.getElementById('hotPicks').textContent = Math.min(filtered.length, 5);
         } catch (e) {
             console.error('Error loading matches:', e);
             this.hideLoading();
-            this.showEmpty('upcomingMatches', 'Error cargando partidos. Intenta más tarde.');
+            this.showEmpty('upcomingMatches', 'Error cargando partidos');
         }
-    }
-
-    async loadLiveCount() {
-        try {
-            const live = await API_FOOTBALL.getLiveMatches();
-            if (live.length > 0) {
-                this.showNotification(`${live.length} partidos en vivo ahora`, 'info');
-            }
-        } catch (e) { /* ok */ }
     }
 
     renderTodayMatches(matches) {
@@ -140,10 +121,9 @@ class AnalystKingApp {
             return;
         }
 
-        // Show first 10 matches
-        const defaultLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23374357" width="100" height="100"/><text x="50%" y="55%" font-size="30" text-anchor="middle" fill="white">⚽</text></svg>');
+        const dl = this.defaultLogo();
 
-        c.innerHTML = matches.slice(0, 10).map(m => {
+        c.innerHTML = matches.slice(0, 12).map(m => {
             const t = new Date(m.date);
             const time = t.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
             const isLive = ['1H','2H','HT','LIVE','ET','P','BT'].includes(m.status);
@@ -157,11 +137,11 @@ class AnalystKingApp {
                 <div class="match-item">
                     <div class="match-teams">
                         <div class="match-team">
-                            <img src="${m.home.logo || defaultLogo}" class="team-logo" onerror="this.src='${defaultLogo}'">
+                            <img src="${m.home.logo || dl}" class="team-logo" onerror="this.src='${dl}'">
                             <span>${m.home.name}</span>
                         </div>
                         <div class="match-team">
-                            <img src="${m.away.logo || defaultLogo}" class="team-logo" onerror="this.src='${defaultLogo}'">
+                            <img src="${m.away.logo || dl}" class="team-logo" onerror="this.src='${dl}'">
                             <span>${m.away.name}</span>
                         </div>
                     </div>
@@ -173,38 +153,57 @@ class AnalystKingApp {
                 </div>`;
         }).join('');
 
-        if (matches.length > 10) {
-            c.innerHTML += `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px">+ ${matches.length - 10} partidos más hoy</div>`;
+        if (matches.length > 12) {
+            c.innerHTML += `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px">+ ${matches.length - 12} partidos mas hoy</div>`;
         }
     }
 
     // ========== PREDICTIONS ==========
-    async loadPredictions(filter = 'all') {
+    async loadPredictions(filter = 'today') {
         if (!this.apiAvailable) {
             this.showEmpty('predictionsGrid', 'API-Football no conectada');
             return;
         }
-
         this.showLoading();
+
         try {
             let matches = this.todayMatches;
-            if (matches.length === 0) {
+
+            // If we don't have matches yet, load them
+            if (!matches || matches.length === 0) {
                 matches = await API_FOOTBALL.getTodayMatches();
+                this.todayMatches = matches;
             }
 
-            // Filter by selected league if not 'all'
-            if (filter !== 'all') {
-                matches = API_FOOTBALL.getFixturesForLeague(matches, filter);
+            // Filter by league if selected
+            const leagueFilter = document.getElementById('predictionLeagueFilter').value;
+            if (leagueFilter !== 'all') {
+                matches = API_FOOTBALL.getFixturesForLeague(matches, leagueFilter);
+            } else {
+                // Only show matches from our tracked leagues
+                const trackedIds = new Set(Object.values(API_FOOTBALL.leagues).map(l => l.id));
+                matches = matches.filter(m => trackedIds.has(m.league.id));
             }
 
-            // Only upcoming/scheduled matches for predictions
-            const upcoming = matches.filter(m =>
-                ['NS', 'TBD', '1H', '2H', 'HT', 'LIVE'].includes(m.status) ||
-                !['FT', 'AET', 'PEN', 'WO', 'PST', 'CANC'].includes(m.status)
-            );
+            // Date filter
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
+            const weekEnd = new Date(now.getTime() + 7 * 86400000).toISOString().split('T')[0];
+
+            if (filter === 'today') {
+                matches = matches.filter(m => m.date.split('T')[0] === today);
+            } else if (filter === 'tomorrow') {
+                matches = matches.filter(m => m.date.split('T')[0] === tomorrow);
+            } else if (filter === 'week') {
+                matches = matches.filter(m => {
+                    const d = m.date.split('T')[0];
+                    return d >= today && d <= weekEnd;
+                });
+            }
 
             this.hideLoading();
-            this.renderPredictions(upcoming);
+            this.renderPredictions(matches);
         } catch (e) {
             this.hideLoading();
             this.showEmpty('predictionsGrid', 'Error cargando predicciones');
@@ -214,16 +213,22 @@ class AnalystKingApp {
     renderPredictions(matches) {
         const c = document.getElementById('predictionsGrid');
         if (!matches || matches.length === 0) {
-            c.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>No hay partidos programados para predicciones</p></div>';
+            c.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>No hay partidos para predicciones en este filtro</p></div>';
             return;
         }
 
-        const defaultLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23374357" width="100" height="100"/><text x="50%" y="55%" font-size="30" text-anchor="middle" fill="white">⚽</text></svg>');
+        const dl = this.defaultLogo();
 
-        c.innerHTML = matches.slice(0, 20).map(m => {
+        c.innerHTML = matches.map(m => {
             const t = new Date(m.date);
             const time = t.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
             const date = t.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
+            const isLive = ['1H','2H','HT','LIVE','ET','P','BT'].includes(m.status);
+            const isDone = ['FT','AET','PEN','WO'].includes(m.status);
+
+            let statusBadge = '';
+            if (isLive) statusBadge = `<span class="match-status live">${m.elapsed ? m.elapsed + "'" : 'LIVE'}</span>`;
+            else if (isDone) statusBadge = `<span class="match-status finished">FT ${m.home.score ?? ''}-${m.away.score ?? ''}</span>`;
 
             return `
                 <div class="prediction-card" data-league="${m.league.id}">
@@ -232,12 +237,19 @@ class AnalystKingApp {
                         <span class="prediction-confidence medium" style="font-size:12px">${date} ${time}</span>
                     </div>
                     <div class="prediction-teams">
-                        <div class="prediction-team">${m.home.name}</div>
-                        <div class="prediction-vs">VS</div>
-                        <div class="prediction-team">${m.away.name}</div>
+                        <div class="prediction-team">
+                            <img src="${m.home.logo || dl}" class="team-logo-sm" onerror="this.style.display='none'">
+                            ${m.home.name}
+                        </div>
+                        <div class="prediction-vs">${isDone ? m.home.score + ' - ' + m.away.score : 'VS'}</div>
+                        <div class="prediction-team">
+                            <img src="${m.away.logo || dl}" class="team-logo-sm" onerror="this.style.display='none'">
+                            ${m.away.name}
+                        </div>
                     </div>
+                    ${statusBadge ? `<div style="text-align:center;margin-top:8px">${statusBadge}</div>` : ''}
                     <div style="text-align:center;margin-top:12px">
-                        <button class="btn btn-sm btn-outline" onclick="app.analyzeMatch('${m.home.name}','${m.away.name}')">
+                        <button class="btn btn-sm btn-outline" onclick="app.analyzeMatch('${m.home.name.replace(/'/g,"\\'")}','${m.away.name.replace(/'/g,"\\'")}')">
                             <i class="fas fa-robot"></i> Analizar con IA
                         </button>
                     </div>
@@ -269,18 +281,18 @@ class AnalystKingApp {
     }
 
     async loadLeagueData(leagueId) {
-        this.showLoading();
+        // Load standings
         try {
             const standings = await API_FOOTBALL.getStandings(leagueId);
             this.renderStandings(standings);
         } catch (e) {
             console.error('Standings error:', e);
             document.getElementById('standingsBody').innerHTML =
-                '<tr><td colspan="11" class="text-center" style="padding:40px"><i class="fas fa-info-circle" style="font-size:24px;color:var(--accent-primary);display:block;margin-bottom:10px"></i>Clasificación de temporada 2024<br><small style="color:var(--text-muted)">Datos históricos (plan free limitado a 2022-2024)</small></td></tr>';
+                '<tr><td colspan="11" class="text-center" style="padding:40px"><i class="fas fa-info-circle" style="font-size:24px;color:var(--accent-primary);display:block;margin-bottom:10px"></i>Clasificacion temporada 2024<br><small style="color:var(--text-muted)">Datos del plan free (temporadas 2022-2024)</small></td></tr>';
         }
 
+        // Load today's fixtures for this league
         try {
-            // Get today's matches for this league
             const today = new Date().toISOString().split('T')[0];
             const fixtures = await API_FOOTBALL.getFixtures(leagueId, today);
             if (fixtures.length > 0) {
@@ -292,23 +304,22 @@ class AnalystKingApp {
             document.getElementById('fixturesList').innerHTML = '<div class="empty-state"><p>Error cargando partidos</p></div>';
         }
 
+        // Load top scorers
         try {
             const scorers = await API_FOOTBALL.getTopScorers(leagueId);
             this.renderStats(scorers);
         } catch (e) {
-            this.renderStats([]);
+            document.getElementById('leagueStats').innerHTML = '<div class="stat-box"><h3>Goleadores</h3><p style="color:var(--text-muted)">No hay datos disponibles</p></div>';
         }
-
-        this.hideLoading();
     }
 
     renderStandings(standings) {
         const tbody = document.getElementById('standingsBody');
         if (!standings || standings.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" class="text-center">Sin datos de clasificación</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center">Sin datos de clasificacion</td></tr>';
             return;
         }
-        const dl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23374357" width="100" height="100"/><text x="50%" y="55%" font-size="30" text-anchor="middle" fill="white">⚽</text></svg>');
+        const dl = this.defaultLogo();
 
         tbody.innerHTML = standings.map(t => `
             <tr>
@@ -324,7 +335,7 @@ class AnalystKingApp {
     renderFixtures(fixtures) {
         const c = document.getElementById('fixturesList');
         if (!fixtures.length) { c.innerHTML = '<div class="empty-state"><p>Sin partidos hoy</p></div>'; return; }
-        const dl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23374357" width="100" height="100"/><text x="50%" y="55%" font-size="30" text-anchor="middle" fill="white">⚽</text></svg>');
+        const dl = this.defaultLogo();
 
         c.innerHTML = '<div class="fixture-date">Hoy</div>' + fixtures.map(m => {
             const t = new Date(m.date);
@@ -355,11 +366,11 @@ class AnalystKingApp {
             c.innerHTML = '<div class="stat-box"><h3>Goleadores</h3><p style="color:var(--text-muted)">No hay datos disponibles</p></div>';
             return;
         }
-        const da = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle fill="%233b82f6" cx="50" cy="50" r="50"/><text x="50%" y="55%" font-size="30" text-anchor="middle" fill="white">⚽</text></svg>');
+        const da = this.defaultLogo();
 
         c.innerHTML = `
             <div class="stat-box">
-                <h3><i class="fas fa-crosshairs"></i> Goleadores Líderes (2024)</h3>
+                <h3><i class="fas fa-crosshairs"></i> Goleadores (2024)</h3>
                 <div class="stat-list">${scorers.slice(0, 5).map(p => `
                     <div class="stat-list-item">
                         <div class="player">
@@ -372,7 +383,7 @@ class AnalystKingApp {
             </div>
             <div class="stat-box">
                 <h3><i class="fas fa-hands-helping"></i> Asistentes (2024)</h3>
-                <div class="stat-list">${scorers.sort((a,b)=>(b.assists||0)-(a.assists||0)).slice(0, 5).map(p => `
+                <div class="stat-list">${[...scorers].sort((a,b)=>(b.assists||0)-(a.assists||0)).slice(0, 5).map(p => `
                     <div class="stat-list-item">
                         <div class="player">
                             <img src="${p.photo||da}" class="player-avatar" onerror="this.src='${da}'">
@@ -385,6 +396,24 @@ class AnalystKingApp {
     }
 
     // ========== AI ANALYST ==========
+    populateLeagues() {
+        const c = document.getElementById('leaguesList');
+        c.innerHTML = LEAGUES.map(l => `
+            <div class="league-item" data-league="${l.id}">
+                <span class="league-flag">${l.flag}</span><span>${l.name}</span>
+            </div>
+        `).join('');
+        c.querySelectorAll('.league-item').forEach(i => {
+            i.addEventListener('click', () => this.openLeague(i.dataset.league));
+        });
+    }
+
+    populateLeagueSelects() {
+        const opts = LEAGUES.map(l => `<option value="${l.id}">${l.flag} ${l.name}</option>`).join('');
+        document.getElementById('aiLeagueSelect').innerHTML = '<option value="">Seleccionar liga...</option>' + opts;
+        document.getElementById('predictionLeagueFilter').innerHTML = '<option value="all">Todas las Ligas</option>' + opts;
+    }
+
     updateTeams(leagueId) {
         const h = document.getElementById('homeTeam');
         const a = document.getElementById('awayTeam');
@@ -407,33 +436,25 @@ class AnalystKingApp {
         const away = document.getElementById('awayTeam').value;
 
         if (!geminiAI.isConfigured()) {
-            this.showNotification('Configura Gemini API key en Configuración', 'error');
+            this.showNotification('Configura Gemini API key en Configuracion', 'error');
             return;
         }
 
+        let ctx = '';
+        if (this.apiAvailable && this.todayMatches.length > 0) {
+            ctx = `\n\nPartidos de hoy:\n${this.todayMatches.slice(0, 10).map(m => `${m.home.name} vs ${m.away.name} [${m.league.name}]`).join('\n')}`;
+        }
+
+        const prompts = {
+            match: `Analiza ${home || '?'} vs ${away || '?'} para apuestas. Forma, H2H, goles, BTTS, Over/Under, valor. Confianza 1-5.${ctx}`,
+            team: `Analiza a ${home || '?'} para apuestas: forma, localia, goles, mercados con valor.${ctx}`,
+            trends: `Tendencias de esta liga para apuestas: Over/Under, BTTS, valor, sorpresas.${ctx}`,
+            predictions: `Predicciones para proximos partidos. Over/Under 2.5, BTTS, ganador, confianza 1-5.${ctx}`
+        };
+
+        this.addUserMessage(prompts[type] || prompts.match);
+        this.addTyping();
         try {
-            let ctx = '';
-            if (this.apiAvailable) {
-                try {
-                    if (type === 'match' && home && away) {
-                        ctx = `\nPartido: ${home} vs ${away}`;
-                    }
-                    // Add today's matches as context
-                    if (this.todayMatches.length > 0) {
-                        ctx += `\n\nPartidos de hoy:\n${this.todayMatches.slice(0, 10).map(m => `${m.home.name} vs ${m.away.name} [${m.league.name}]`).join('\n')}`;
-                    }
-                } catch (e) { /* ok */ }
-            }
-
-            const prompts = {
-                match: `Analiza ${home} vs ${away} para apuestas. Forma, H2H, goles, BTTS, Over/Under, valor. Confianza 1-5.${ctx}`,
-                team: `Analiza a ${home} para apuestas: forma, localía, goles, mercados con valor.${ctx}`,
-                trends: `Tendencias de esta liga para apuestas: Over/Under, BTTS, valor, sorpresas.${ctx}`,
-                predictions: `Predicciones para los próximos partidos. Over/Under 2.5, BTTS, ganador, confianza 1-5.${ctx}`
-            };
-
-            this.addUserMessage(prompts[type] || prompts.match);
-            this.addTyping();
             const response = await geminiAI.sendMessage(prompts[type] || prompts.match, { league: leagueId });
             this.removeTyping();
             this.addAI(response);
@@ -497,10 +518,10 @@ class AnalystKingApp {
             if (this.apiAvailable) {
                 try {
                     const s = await API_FOOTBALL.getStandings(this.currentLeague);
-                    if (s.length > 0) ctx += `\n\nClasificación 2024:\n${s.map(t => `${t.pos}. ${t.team} - ${t.pts}pts`).join('\n')}`;
+                    if (s.length > 0) ctx += `\n\nClasificacion 2024:\n${s.map(t => `${t.pos}. ${t.team} - ${t.pts}pts`).join('\n')}`;
                 } catch (e) { /* ok */ }
             }
-            const r = await geminiAI.sendMessage('Análisis completo de esta liga para apuestas.' + ctx, { league: this.currentLeague });
+            const r = await geminiAI.sendMessage('Analisis completo de esta liga para apuestas.' + ctx, { league: this.currentLeague });
             document.getElementById('leagueAnalysisContent').innerHTML = geminiAI.formatResponse(r);
         } catch (e) {
             this.showNotification(e.message, 'error');
@@ -516,7 +537,6 @@ class AnalystKingApp {
         document.getElementById(section).classList.add('active');
         this.currentSection = section;
         if (this.isSidebarOpen) this.toggleSidebar();
-        // Auto-load predictions when switching to predictions section
         if (section === 'predictions') this.loadPredictions();
     }
 
@@ -525,7 +545,6 @@ class AnalystKingApp {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.getElementById(tab).classList.add('active');
-        this.currentTab = tab;
     }
 
     // ========== SETTINGS ==========
@@ -545,11 +564,14 @@ class AnalystKingApp {
         geminiAI.setApiKey(document.getElementById('apiKeyInput').value.trim());
         geminiAI.setModel(document.getElementById('aiModelSelect').value);
         this.closeSettings();
-        this.showNotification('Configuración guardada', 'success');
-        this.checkApiConnection();
+        this.showNotification('Configuracion guardada', 'success');
     }
 
     // ========== UI HELPERS ==========
+    defaultLogo() {
+        return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23374357" width="100" height="100"/><text x="50%" y="55%" font-size="30" text-anchor="middle" fill="white">&#9917;</text></svg>');
+    }
+
     addAI(content) {
         const c = document.getElementById('chatMessages');
         c.insertAdjacentHTML('beforeend', `
