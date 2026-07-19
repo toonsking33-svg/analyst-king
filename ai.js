@@ -49,13 +49,6 @@ Idioma: ${this.language === 'es' ? 'Español' : this.language === 'pt' ? 'Portug
     async sendMessage(message, context = {}) {
         if (!this.apiKey) throw new Error('Configura tu API key de Gemini en Configuración');
 
-        // Rate limit protection
-        const now = Date.now();
-        const timeSinceLastRequest = now - this.lastRequestTime;
-        if (timeSinceLastRequest < this.minInterval) {
-            await new Promise(r => setTimeout(r, this.minInterval - timeSinceLastRequest));
-        }
-
         let contextMessage = '';
         if (context.league) {
             const league = getLeagueById(context.league);
@@ -68,46 +61,65 @@ Idioma: ${this.language === 'es' ? 'Español' : this.language === 'pt' ? 'Portug
         const fullMessage = message + contextMessage;
         this.conversationHistory.push({ role: 'user', content: fullMessage });
 
-        this.lastRequestTime = Date.now();
-
-        try {
-            const response = await fetch(`${this.baseURL}/models/${this.model}:generateContent?key=${this.apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    system_instruction: { parts: [{ text: this.getSystemPrompt() }] },
-                    contents: this.conversationHistory.slice(-6).map(msg => ({
-                        role: msg.role === 'assistant' ? 'model' : 'user',
-                        parts: [{ text: msg.content }]
-                    })),
-                    generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
-                })
-            });
-
-            if (response.status === 429) {
-                throw new Error('Límite de solicitudes alcanzado. Espera 30 segundos e intenta de nuevo.');
-            }
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                const msg = err.error?.message || `Error HTTP ${response.status}`;
-                if (msg.includes('quota') || msg.includes('Quota')) {
-                    throw new Error('Cuota de Gemini API agotada. Verifica tu plan en https://ai.google.dev');
+        const maxRetries = 3;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                // Rate limit protection between attempts
+                const now = Date.now();
+                const timeSinceLastRequest = now - this.lastRequestTime;
+                if (timeSinceLastRequest < this.minInterval) {
+                    await new Promise(r => setTimeout(r, this.minInterval - timeSinceLastRequest));
                 }
-                throw new Error(msg);
-            }
+                this.lastRequestTime = Date.now();
 
-            const data = await response.json();
-            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                const aiResponse = data.candidates[0].content.parts[0].text;
-                this.conversationHistory.push({ role: 'assistant', content: aiResponse });
-                return aiResponse;
-            }
+                const response = await fetch(`${this.baseURL}/models/${this.model}:generateContent?key=${this.apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system_instruction: { parts: [{ text: this.getSystemPrompt() }] },
+                        contents: this.conversationHistory.slice(-6).map(msg => ({
+                            role: msg.role === 'assistant' ? 'model' : 'user',
+                            parts: [{ text: msg.content }]
+                        })),
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+                    })
+                });
 
-            throw new Error('Respuesta vacía de la API');
-        } catch (error) {
-            console.error('Gemini Error:', error);
-            throw error;
+                if (response.status === 429 && attempt < maxRetries) {
+                    const waitTime = Math.pow(2, attempt + 1) * 5000;
+                    await new Promise(r => setTimeout(r, waitTime));
+                    continue;
+                }
+
+                if (response.status === 429) {
+                    throw new Error('Cuota de Gemini API agotada o muchas solicitudes. Espera 1 minuto o verifica tu plan en https://ai.google.dev/pricing');
+                }
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    const msg = err.error?.message || `Error HTTP ${response.status}`;
+                    if (msg.includes('quota') || msg.includes('Quota') || msg.includes('429')) {
+                        throw new Error('Cuota de Gemini API agotada. Verifica tu plan en https://ai.google.dev');
+                    }
+                    throw new Error(msg);
+                }
+
+                const data = await response.json();
+                if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const aiResponse = data.candidates[0].content.parts[0].text;
+                    this.conversationHistory.push({ role: 'assistant', content: aiResponse });
+                    return aiResponse;
+                }
+
+                throw new Error('Respuesta vacía de la API');
+            } catch (error) {
+                if (attempt >= maxRetries || (error.message && !error.message.includes('429') && !error.message.includes('rate') && !error.message.includes('limit'))) {
+                    console.error('Gemini Error:', error);
+                    throw error;
+                }
+                const waitTime = Math.pow(2, attempt + 1) * 5000;
+                await new Promise(r => setTimeout(r, waitTime));
+            }
         }
     }
 
