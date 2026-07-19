@@ -83,8 +83,6 @@ class AnalystKingApp {
         this.showLoading();
         try {
             this.todayMatches = await API_FOOTBALL.getTodayMatches();
-            const trackedIds = new Set(Object.values(API_FOOTBALL.leagues).map(l => l.id));
-            this.todayMatches = this.todayMatches.filter(m => trackedIds.has(m.league.id));
             this.hideLoading();
             this.renderMatches(this.todayMatches);
             this.updateCount('totalMatches', this.todayMatches.length);
@@ -95,7 +93,7 @@ class AnalystKingApp {
         } catch (e) {
             console.error('Error loading matches:', e);
             this.hideLoading();
-            this.showEmpty('matchesList', 'Error cargando partidos');
+            this.showEmpty('matchesList', 'Error cargando partidos. Verifica la consola (F12).');
         }
     }
 
@@ -115,7 +113,7 @@ class AnalystKingApp {
     renderMatches(matches) {
         const c = document.getElementById('matchesList');
         if (!matches || matches.length === 0) {
-            c.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-day"></i><p>No hay partidos hoy en tus ligas</p></div>';
+            c.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-day"></i><p>No hay partidos hoy en tus ligas</p><small style="color:var(--text-muted)">Julio es temporada baja en Europa. Prueba las ligas de Sudamerica o espera a Agosto.</small></div>';
             return;
         }
         const dl = this.defaultLogo();

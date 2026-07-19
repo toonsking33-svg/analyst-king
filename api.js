@@ -45,8 +45,13 @@ const API_FOOTBALL = {
 
     async getTodayMatches() {
         const today = new Date().toISOString().split('T')[0];
-        const data = await this.fetchAPI('fixtures', { date: today });
-        return this.formatFixtures(data.response || []);
+        const promises = Object.values(this.leagues).map(league =>
+            this.fetchAPI('fixtures', { league: league.id, date: today })
+                .then(data => this.formatFixtures(data.response || []))
+                .catch(() => [])
+        );
+        const results = await Promise.all(promises);
+        return results.flat();
     },
 
     async getFixturesForDate(date) {
