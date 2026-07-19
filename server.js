@@ -11,58 +11,74 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// In-memory cache
+// Cache system
 const cache = {};
-function getCached(key, ttlMs) {
-    const entry = cache[key];
-    if (entry && Date.now() - entry.time < ttlMs) return entry.data;
+function cached(key, ttlMs) {
+    const e = cache[key];
+    if (e && Date.now() - e.t < ttlMs) return e.d;
     return null;
 }
 function setCache(key, data) {
-    cache[key] = { data, time: Date.now() };
+    cache[key] = { d: data, t: Date.now() };
 }
 
-// Proxy endpoint for API-Football
+// API-Football proxy
 app.get('/api/football/:endpoint', async (req, res) => {
     const { endpoint } = req.params;
     const qs = new URLSearchParams(req.query).toString();
     const cacheKey = `${endpoint}?${qs}`;
 
-    // Cache durations (aggressive to stay within 100 req/day)
-    const ttl = {
-        'status': 3600000,         // 1 hour
-        'standings': 1800000,      // 30 min
-        'fixtures': 300000,        // 5 min (today's matches change)
-        'players/topscorers': 1800000, // 30 min
-        'players/topassists': 1800000, // 30 min
-        'teams': 3600000,          // 1 hour
-        'predictions': 600000,     // 10 min
+    const ttlMap = {
+        'status': 3600000,
+        'standings': 1800000,
+        'fixtures': 300000,
+        'predictions': 600000,
+        'fixtures/statistics': 600000,
+        'players/topscorers': 1800000
     };
-    const ttlMs = ttl[endpoint] || 300000;
+    const ttl = ttlMap[endpoint] || 300000;
 
-    const cached = getCached(cacheKey, ttlMs);
-    if (cached) return res.json(cached);
+    const hit = cached(cacheKey, ttl);
+    if (hit) {
+        console.log(`CACHE HIT: ${cacheKey}`);
+        return res.json(hit);
+    }
 
     try {
         const url = `${API_BASE}/${endpoint}?${qs}`;
+        console.log(`API CALL: ${url}`);
         const response = await fetch(url, {
             headers: { 'x-apisports-key': API_KEY }
         });
+
         if (!response.ok) {
             return res.status(response.status).json({ error: `API-Football HTTP ${response.status}` });
         }
+
         const data = await response.json();
+
+        if (data.errors && Object.keys(data.errors).length > 0) {
+            const errMsg = Object.values(data.errors).join(', ');
+            return res.status(400).json({ error: errMsg });
+        }
+
         setCache(cacheKey, data);
 
-        // Log remaining requests
         if (data.response?.requests) {
-            console.log(`API Usage: ${data.response.requests.used}/${data.response.requests.limit_daily}`);
+            const r = data.response.requests;
+            console.log(`API Usage: ${r.used}/${r.limit_daily}`);
         }
+
         res.json(data);
     } catch (err) {
         console.error('API Proxy Error:', err.message);
         res.status(500).json({ error: err.message });
     }
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', cacheEntries: Object.keys(cache).length });
 });
 
 // Serve index.html for all other routes

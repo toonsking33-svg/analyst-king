@@ -1754,3 +1754,158 @@ body {
 .empty-state p {
     font-size: 14px;
 }
+
+/* ===== MATCH DETAIL ===== */
+.btn-back {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+.btn-back:hover { background: rgba(59,130,246,0.1); }
+
+.match-detail-hero {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    margin-bottom: 20px;
+}
+.hero-match {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 20px;
+}
+.hero-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 120px;
+}
+.hero-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--bg-input);
+    padding: 8px;
+}
+.hero-center { text-align: center; }
+.hero-score {
+    font-size: 42px;
+    font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.hero-vs { font-size: 28px; color: var(--text-muted); font-weight: 700; }
+.hero-ht { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+.hero-info { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.detail-card h3 {
+    font-size: 14px;
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.detail-card.wide {
+    grid-column: 1 / -1;
+}
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 13px;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-row span { color: var(--text-secondary); }
+.stat-row strong { font-size: 14px; }
+.stat-row.highlight { background: rgba(59,130,246,0.1); padding: 8px; border-radius: var(--radius-sm); margin: 2px 0; }
+.stat-row.advice {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    background: rgba(139,92,246,0.1);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    margin-top: 8px;
+}
+.stat-row.advice strong { color: var(--accent-secondary); }
+
+.text-success { color: var(--accent-success) !important; }
+.text-danger { color: var(--accent-danger) !important; }
+.text-muted { color: var(--text-muted); }
+
+.stats-comparison {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.comparison-row {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    align-items: center;
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+}
+.comparison-row:nth-child(odd) { background: rgba(255,255,255,0.02); }
+.comp-home, .comp-away { text-align: center; font-weight: 600; }
+.comp-label { text-align: center; color: var(--text-muted); font-size: 12px; }
+.comp-winner { color: var(--accent-success) !important; }
+
+/* Match items clickable */
+.match-item.clickable { cursor: pointer; transition: var(--transition); }
+.match-item.clickable:hover { border-color: var(--accent-primary); background: var(--bg-card-hover); }
+.match-league-tag { font-size: 11px; color: var(--accent-primary); font-weight: 500; margin-bottom: 6px; }
+.match-center { text-align: center; min-width: 80px; }
+.match-ht { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.match-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+}
+.loading-mini { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+
+/* Team logo in predictions */
+.team-logo-sm {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.matches-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+/* Wide stat cards */
+.detail-card.wide .stat-box { margin-bottom: 16px; }
