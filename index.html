@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyst King - AI Sports Analytics</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <span class="logo-text">Analyst King</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-section">
+                    <h3 class="nav-section-title">Principal</h3>
+                    <a href="#" class="nav-item active" data-section="dashboard">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="ai-analyst">
+                        <i class="fas fa-robot"></i>
+                        <span>AI Analyst</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="predictions">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Predicciones</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <h3 class="nav-section-title">Ligas</h3>
+                    <div class="leagues-list" id="leaguesList">
+                        <!-- Leagues populated by JS -->
+                    </div>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="api-status" id="apiStatus">
+                    <i class="fas fa-circle"></i>
+                    <span>API Configurada</span>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar equipos, ligas..." id="searchInput">
+                </div>
+                <div class="header-actions">
+                    <button class="btn-icon" id="settingsBtn">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Section -->
+            <section class="content-section active" id="dashboard">
+                <div class="section-header">
+                    <h1>Dashboard</h1>
+                    <p class="subtitle">Resumen de actividad y análisis recientes</p>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-futbol"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalMatches">0</span>
+                            <span class="stat-label">Partidos Analizados</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalLeagues">20</span>
+                            <span class="stat-label">Ligas Activas</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="accuracy">87%</span>
+                            <span class="stat-label">Precisión IA</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-fire"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="hotPicks">5</span>
+                            <span class="stat-label">Picks del Día</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="card upcoming-matches">
+                        <div class="card-header">
+                            <h2><i class="fas fa-calendar"></i> Próximos Partidos</h2>
+                            <button class="btn-text">Ver todos</button>
+                        </div>
+                        <div class="matches-list" id="upcomingMatches">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="card ai-insights">
+                        <div class="card-header">
+                            <h2><i class="fas fa-lightbulb"></i> Insights IA</h2>
+                        </div>
+                        <div class="insights-list" id="aiInsights">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- AI Analyst Section -->
+            <section class="content-section" id="ai-analyst">
+                <div class="section-header">
+                    <h1><i class="fas fa-robot"></i> AI Analyst</h1>
+                    <p class="subtitle">Análisis inteligente potenciado por Gemini AI</p>
+                </div>
+                
+                <div class="ai-analyst-container">
+                    <div class="ai-config-panel">
+                        <div class="card">
+                            <h3>Configurar Análisis</h3>
+                            <div class="form-group">
+                                <label>Seleccionar Liga</label>
+                                <select id="aiLeagueSelect" class="form-control">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Análisis</label>
+                                <select id="analysisType" class="form-control">
+                                    <option value="match">Análisis de Partido</option>
+                                    <option value="team">Análisis de Equipo</option>
+                                    <option value="player">Análisis de Jugador</option>
+                                    <option value="trends">Tendencias</option>
+                                    <option value="predictions">Predicciones</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Equipo Local</label>
+                                <select id="homeTeam" class="form-control">
+                                    <option value="">Seleccionar equipo...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Equipo Visitante</label>
+                                <select id="awayTeam" class="form-control">
+                                    <option value="">Seleccionar equipo...</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary btn-block" id="runAnalysis">
+                                <i class="fas fa-play"></i> Ejecutar Análisis
+                            </button>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>Análisis Rápido</h3>
+                            <div class="quick-actions">
+                                <button class="btn btn-outline quick-action" data-prompt="analiza los últimos 5 partidos de esta semana en todas las ligas cubiertas y dame los mejores pronósticos">
+                                    <i class="fas fa-bolt"></i> Resumen Semanal
+                                </button>
+                                <button class="btn btn-outline quick-action" data-prompt="cuáles son los goleadores líderes en todas las ligas y quién tiene más oportunidades de anotar el próximo partido">
+                                    <i class="fas fa-crosshairs"></i> Top Goleadores
+                                </button>
+                                <button class="btn btn-outline quick-action" data-prompt="analiza los equipos con mejor rendimiento reciente y identifica posibles sorpresas en los próximos partidos">
+                                    <i class="fas fa-star"></i> Sorpresas Potenciales
+                                </button>
+                                <button class="btn btn-outline quick-action" data-prompt="dame un análisis completo de los partidos de hoy con estadísticas, pronósticos y valor en las apuestas">
+                                    <i class="fas fa-calendar-day"></i> Partidos de Hoy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-chat-panel">
+                        <div class="chat-container">
+                            <div class="chat-messages" id="chatMessages">
+                                <div class="message ai-message">
+                                    <div class="message-avatar">
+                                        <i class="fas fa-robot"></i>
+                                    </div>
+                                    <div class="message-content">
+                                        <p>¡Hola! Soy tu analista de IA. Puedo ayudarte con:</p>
+                                        <ul>
+                                            <li>Análisis de partidos y pronósticos</li>
+                                            <li>Estadísticas de equipos y jugadores</li>
+                                            <li>Tendencias y patrones de juego</li>
+                                            <li>Comparativas entre equipos</li>
+                                            <li>Valor en mercados de apuestas</li>
+                                        </ul>
+                                        <p>Selecciona una liga y equipo, o simplemente pregúntame lo que quieras saber.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chat-input-container">
+                                <textarea id="chatInput" placeholder="Escribe tu pregunta o análisis..." rows="2"></textarea>
+                                <button class="btn btn-primary" id="sendMessage">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Predictions Section -->
+            <section class="content-section" id="predictions">
+                <div class="section-header">
+                    <h1><i class="fas fa-chart-line"></i> Predicciones IA</h1>
+                    <p class="subtitle">Pronósticos generados por inteligencia artificial</p>
+                </div>
+                
+                <div class="predictions-filters">
+                    <button class="btn btn-filter active" data-filter="today">Hoy</button>
+                    <button class="btn btn-filter" data-filter="tomorrow">Mañana</button>
+                    <button class="btn btn-filter" data-filter="week">Esta Semana</button>
+                    <select id="predictionLeagueFilter" class="form-control form-control-sm">
+                        <option value="all">Todas las Ligas</option>
+                    </select>
+                </div>
+                
+                <div class="predictions-grid" id="predictionsGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+            
+            <!-- League Detail Section -->
+            <section class="content-section" id="league-detail">
+                <div class="section-header">
+                    <h1 id="leagueDetailTitle">Liga</h1>
+                    <p class="subtitle" id="leagueDetailSubtitle">Información de la liga</p>
+                </div>
+                
+                <div class="league-tabs">
+                    <button class="tab-btn active" data-tab="standings">Clasificación</button>
+                    <button class="tab-btn" data-tab="fixtures">Partidos</button>
+                    <button class="tab-btn" data-tab="stats">Estadísticas</button>
+                    <button class="tab-btn" data-tab="analysis">Análisis IA</button>
+                </div>
+                
+                <div class="tab-content active" id="standings">
+                    <div class="table-container">
+                        <table class="data-table" id="standingsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Equipo</th>
+                                    <th>PJ</th>
+                                    <th>G</th>
+                                    <th>E</th>
+                                    <th>P</th>
+                                    <th>GF</th>
+                                    <th>GC</th>
+                                    <th>DIF</th>
+                                    <th>Pts</th>
+                                    <th>Forma</th>
+                                </tr>
+                            </thead>
+                            <tbody id="standingsBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="fixtures">
+                    <div class="fixtures-list" id="fixturesList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="stats">
+                    <div class="stats-dashboard" id="leagueStats">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="analysis">
+                    <div class="ai-league-analysis" id="leagueAnalysis">
+                        <div class="card">
+                            <h3><i class="fas fa-robot"></i> Análisis IA de la Liga</h3>
+                            <div class="analysis-content" id="leagueAnalysisContent">
+                                <p>Selecciona una liga para ver el análisis detallado de IA.</p>
+                            </div>
+                            <button class="btn btn-primary" id="generateLeagueAnalysis">
+                                <i class="fas fa-sync-alt"></i> Generar Análisis
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog"></i> Configuración</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Gemini API Key</label>
+                    <div class="input-group">
+                        <input type="password" id="apiKeyInput" class="form-control" placeholder="Ingresa tu API Key de Gemini">
+                        <button class="btn btn-outline" id="toggleApiKey">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <small class="form-text">Obtén tu API key en <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+                </div>
+                <div class="form-group">
+                    <label>Modelo de IA</label>
+                    <select id="aiModelSelect" class="form-control">
+                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (Rápido)</option>
+                        <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Preciso)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Idioma de Respuesta</label>
+                    <select id="languageSelect" class="form-control">
+                        <option value="es">Español</option>
+                        <option value="en">English</option>
+                        <option value="pt">Português</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tono del Análisis</label>
+                    <select id="toneSelect" class="form-control">
+                        <option value="professional">Profesional</option>
+                        <option value="casual">Casual</option>
+                        <option value="technical">Técnico/Detalado</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-block" id="saveSettings">
+                    <i class="fas fa-save"></i> Guardar Configuración
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Analizando datos...</p>
+        </div>
+    </div>
+    
+    <script src="data.js"></script>
+    <script src="api.js"></script>
+    <script src="ai.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
