@@ -49,8 +49,8 @@ function httpsGet(endpoint, qs) {
     });
 }
 
-app.get('/api/football/:endpoint', async (req, res) => {
-    const { endpoint } = req.params;
+app.get('/api/football/:endpoint(*)', async (req, res) => {
+    const endpoint = req.params.endpoint;
     const qs = new URLSearchParams(req.query).toString();
     const cacheKey = `${endpoint}?${qs}`;
 
