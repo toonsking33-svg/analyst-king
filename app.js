@@ -215,6 +215,8 @@ class AnalystKingApp {
         try {
             const stats = await API_FOOTBALL.getFixtureStatistics(fixtureId);
             if (!stats) {
+                document.getElementById('goalsStats').innerHTML = '<p class="text-muted">Sin datos</p>';
+                document.getElementById('cornersStats').innerHTML = '<p class="text-muted">Sin datos</p>';
                 document.getElementById('matchStatistics').innerHTML = '<p class="text-muted">Estadisticas no disponibles</p>';
                 return;
             }
