@@ -82,13 +82,24 @@ class AnalystKingApp {
     async loadTodayMatches() {
         this.showLoading();
         try {
-            this.todayMatches = await API_FOOTBALL.getTodayMatches();
+            const trackedIds = new Set(Object.values(API_FOOTBALL.leagues).map(l => l.id));
+            let matches = [];
+            let matchedDate = null;
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const data = i === 0 ? await API_FOOTBALL.getTodayMatches() : await API_FOOTBALL.getFixturesForDate(dateStr);
+                const filtered = data.filter(m => trackedIds.has(m.league.id));
+                if (filtered.length > 0) { matches = filtered; matchedDate = dateStr; break; }
+            }
+            this.todayMatches = matches;
             this.hideLoading();
             this.renderMatches(this.todayMatches);
             this.updateCount('totalMatches', this.todayMatches.length);
             this.updateCount('liveCount', this.todayMatches.filter(m => ['1H','2H','HT','LIVE','ET','P','BT'].includes(m.status)).length);
-            const today = new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
-            document.getElementById('dashboardSubtitle').textContent = `${today} - ${this.todayMatches.length} partidos en tus ligas`;
+            const displayDate = matchedDate ? new Date(matchedDate).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Hoy';
+            document.getElementById('dashboardSubtitle').textContent = `${displayDate} - ${this.todayMatches.length} partidos en tus ligas`;
             this.populateLeagueFilters();
         } catch (e) {
             console.error('Error loading matches:', e);
@@ -113,7 +124,7 @@ class AnalystKingApp {
     renderMatches(matches) {
         const c = document.getElementById('matchesList');
         if (!matches || matches.length === 0) {
-            c.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-day"></i><p>No hay partidos hoy en tus ligas</p><small style="color:var(--text-muted)">Julio es temporada baja en Europa. Prueba las ligas de Sudamerica o espera a Agosto.</small></div>';
+            c.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-day"></i><p>No hay partidos hoy en tus ligas</p><small style="color:var(--text-muted)">Julio es temporada baja en Europa. Prob\u00e1 las ligas de verano: Amistosos, Allsvenskan, Liga MX.</small></div>';
             return;
         }
         const dl = this.defaultLogo();

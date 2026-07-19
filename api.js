@@ -12,7 +12,11 @@ const API_FOOTBALL = {
         'brasileirao': { id: 71, name: 'Brasileirao' },
         'liga-argentina': { id: 128, name: 'Liga Argentina' },
         'eredivisie': { id: 88, name: 'Eredivisie' },
-        'liga-portugal': { id: 94, name: 'Liga Portugal' }
+        'liga-portugal': { id: 94, name: 'Liga Portugal' },
+        'world-cup': { id: 1, name: 'World Cup 2026' },
+        'friendlies': { id: 667, name: 'Amistosos' },
+        'allsvenskan': { id: 113, name: 'Allsvenskan' },
+        'liga-mx': { id: 262, name: 'Liga MX' }
     },
 
     async fetchAPI(endpoint, params = {}) {
@@ -45,13 +49,8 @@ const API_FOOTBALL = {
 
     async getTodayMatches() {
         const today = new Date().toISOString().split('T')[0];
-        const promises = Object.values(this.leagues).map(league =>
-            this.fetchAPI('fixtures', { league: league.id, date: today })
-                .then(data => this.formatFixtures(data.response || []))
-                .catch(() => [])
-        );
-        const results = await Promise.all(promises);
-        return results.flat();
+        const data = await this.fetchAPI('fixtures', { date: today });
+        return this.formatFixtures(data.response || []);
     },
 
     async getFixturesForDate(date) {

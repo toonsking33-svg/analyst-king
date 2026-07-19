@@ -1,6 +1,38 @@
 // League and Team Data - 10 Major Leagues
 const LEAGUES = [
     {
+        id: 'world-cup',
+        name: 'World Cup 2026',
+        country: 'Internacional',
+        flag: '🏆',
+        color: '#FFD700',
+        teams: []
+    },
+    {
+        id: 'friendlies',
+        name: 'Amistosos',
+        country: 'Internacional',
+        flag: '🤝',
+        color: '#6B7280',
+        teams: []
+    },
+    {
+        id: 'allsvenskan',
+        name: 'Allsvenskan',
+        country: 'Suecia',
+        flag: '🇸🇪',
+        color: '#005B9F',
+        teams: []
+    },
+    {
+        id: 'liga-mx',
+        name: 'Liga MX',
+        country: 'Mexico',
+        flag: '🇲🇽',
+        color: '#006847',
+        teams: []
+    },
+    {
         id: 'premier-league',
         name: 'Premier League',
         country: 'Inglaterra',
